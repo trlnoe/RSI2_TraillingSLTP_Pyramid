@@ -92,8 +92,6 @@ class RSI2_TrailingSL_TP_Pyramid(Strategy):
 
         
         qty = utils.risk_to_qty(self.capital, self.risk_percent , entry, self.vars["longStopPrice"], fee_rate=self.fee_rate)        
-        
-        #pyramiding = 3 
         self.buy = qty, entry
 
         #trailing stoploss & take profit 
