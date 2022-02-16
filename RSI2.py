@@ -7,7 +7,13 @@ class RSI2_TrailingSL_TP_Pyramid(Strategy):
     def __init__(self):
         super().__init__()
 
-        self.vars["fast_sma_period"] = 5
+        self.current_pyramiding_levels = 0
+        self.last_opened_price = 0
+        self.last_was_profitable = False
+        self.risk_percent = 3
+
+    #def before(self):
+        self.vars["fast_sma_period"] = 50
         self.vars["slow_sma_period"] = 200
         self.vars["rsi_period"] = 2
         self.vars["rsi_ob_threshold"] = 90
@@ -26,6 +32,9 @@ class RSI2_TrailingSL_TP_Pyramid(Strategy):
         self.vars["highestPricePeriod"] = 0
         self.vars["lowestPricePeriod"] = 0 
         self.vars["period"] = 20 
+
+        self.vars["system_type"] = "S1" 
+        self.vars["maximum_pyramiding_levels"] = 3
 
     @property
     def fast_sma(self):
@@ -78,24 +87,14 @@ class RSI2_TrailingSL_TP_Pyramid(Strategy):
 
         stopValue = self.price * (1 - self.vars["longTrailingPer"])       
         entry = self.price
-        prec_ = 3 
-        r = (self.price - stopValue)/2
         self.vars["longStopPrice"] = max(stopValue, self.vars["longStopPrice"])
         self.vars["longExitPrice"] = self.atr * (1 + self.vars["longProfitPer"])
 
         
-        qty = utils.risk_to_qty(self.capital, prec_, entry, self.vars["longStopPrice"], fee_rate=self.fee_rate)        
+        qty = utils.risk_to_qty(self.capital, self.risk_percent , entry, self.vars["longStopPrice"], fee_rate=self.fee_rate)        
         
         #pyramiding = 3 
-        highest_period20 = self.up_trend
-        if self.price > highest_period20: #signal 
-            self.buy = [
-                (qty, entry), 
-                (qty, entry + r), 
-                (qty, entry + 2*r), 
-            ]
-        else: 
-            self.buy = qty, entry
+        self.buy = qty, entry
 
         #trailing stoploss & take profit 
         self.stop_loss = qty, self.vars["longStopPrice"]
@@ -108,42 +107,58 @@ class RSI2_TrailingSL_TP_Pyramid(Strategy):
 
         stopValue = self.price * (1 + self.vars["shortTrailingPer"])
         entry = self.price
-        prec_ = 3 
-        r = (stopValue - self.price)/2
-
         self.vars["shortStopPrice"] = min(stopValue, self.vars["shortStopPrice"])
         self.vars["shortExitPrice"] = self.atr * (1 - self.vars["shortProfitPer"])
 
         
-        qty = utils.risk_to_qty(self.capital, prec_, entry, self.vars["shortStopPrice"], fee_rate=self.fee_rate)         
-        
-        #pyramiding = 3 
-        lowest_period20 = self.down_trend
-        if self.price < lowest_period20: #signal 
-            self.sell = [
-                (qty, entry), 
-                (qty, entry - r), 
-                (qty, entry - 2*r), 
-            ]
-        else: 
-            self.sell = qty, entry
+        qty = utils.risk_to_qty(self.capital, self.risk_percent, entry, self.vars["shortStopPrice"], fee_rate=self.fee_rate)         
+        self.sell = qty, entry
 
         #trailing stoploss & take profit 
         self.stop_loss = qty, self.vars["shortStopPrice"]
         self.take_profit = qty, self.vars["shortExitPrice"]
         self.vars["longStopPrice"] = 0
-
-    def update_position(self):
-        # Exit long position if price is above sma(5)
-        if self.is_long and self.price > self.fast_sma:
-            self.liquidate()
     
-        # Exit short position if price is below sma(5)
-        if self.is_short and self.price < self.fast_sma:
+    def update_position(self):
+        # Handle for pyramiding rules
+        if self.current_pyramiding_levels < self.vars["maximum_pyramiding_levels"]:
+            # if self.is_long and self.price > self.last_opened_price + (self.vars["pyramiding_threshold"] * self.atr):
+            if self.is_long and self.price > self.up_trend:
+                qty = utils.risk_to_qty(self.capital, self.risk_percent, self.price, self.fee_rate)
+                self.buy = qty, self.price
+            
+            if self.is_short and self.price < self.down_trend:
+                qty = utils.risk_to_qty(self.capital, self.risk_percent, self.price, self.fee_rate)
+                self.sell = qty, self.price 
+        
+        if (self.is_long and self.price > self.fast_sma) or (self.is_short and self.price < self.fast_sma):
             self.liquidate()
+            self.current_pyramiding_levels = 0
+    
+    # timestamp: UTC times 
+    # action long / short / sell/ buy/ liquidate / DCA 
+    # pyramid 
+    # param 
+    # entry price, stoploss, takeprofit 
+    # thua, thằng, lời lỗ sau lệnh đó 
+
+    def on_increased_position(self, order):        
+        self.current_pyramiding_levels += 1
+        self.last_opened_price = self.price
+       
+    def on_stop_loss(self, order):
+        # Reset tracked pyramiding levels
+        self.current_pyramiding_levels = 0 
+
+    def on_take_profit(self, order):
+        self.last_was_profitable = True
+
+        # Reset tracked pyramiding levels
+        self.current_pyramiding_levels = 0
 
     def hyperparameters(self):
         return [
-            {'name': 'stop_loss_atr_rate', 'type': float, 'min': 0.1, 'max': 2.0, 'default': 2},
+                {'name':'stop_loss', 'type': float, 'min': 0.5, 'max': 0.99, 'default': 0.9},
+                {'name':'take_profit', 'type': float, 'min': 1.0, 'max': 1.2, 'default': 1.1},
         ]
-    
+     
