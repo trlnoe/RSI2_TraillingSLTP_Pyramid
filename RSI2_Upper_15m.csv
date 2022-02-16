@@ -1,0 +1,27 @@
+,All NONE,All %,Long NONE,Long %,Short NONE,Short %
+Net Profit,1557.99,15.58,2799.19,27.99,-1241.20,-12.41
+Gross Profit,2799.19,27.99,2799.19,27.99,0,0
+Gross Loss,1241.20,12.41,0,0,1241.20,12.41
+Max Drawdown,1241.20,10.59,,,,
+Buy & Hold Return,-2288.64,-22.89,,,,
+Sharpe Ratio,0.386,,,,,
+Sortino Ratio,0.755,,,,,
+Profit Factor,2.255,,N/A,,0,
+Max Contracts Held,1,,1,,1,
+Open PL,0,0,,,,
+Commission Paid,0,,0,,0,
+Total Closed Trades,3,,2,,1,
+Total Open Trades,0,,0,,0,
+Number Winning Trades,2,,2,,0,
+Number Losing Trades,1,,0,,1,
+Percent Profitable,66.67,,100,,0,
+Avg Trade,519.33,5.19,1399.59,14,-1241.20,-12.41
+Avg Winning Trade,1399.59,14,1399.59,14,N/A,N/A
+Avg Losing Trade,1241.20,12.41,N/A,N/A,1241.20,12.41
+Ratio Avg Win / Avg Loss,1.128,,N/A,,0,
+Largest Winning Trade,1718.04,3,1718.04,3,N/A,N/A
+Largest Losing Trade,1241.20,2.18,N/A,N/A,1241.20,2.18
+Avg # Bars in Trades,76,,82,,63,
+Avg # Bars in Winning Trades,82,,82,,0,
+Avg # Bars in Losing Trades,63,,0,,63,
+Margin Calls,0,,0,,0,

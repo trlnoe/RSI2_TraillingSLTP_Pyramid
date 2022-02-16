@@ -1,0 +1,77 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © matrix391
+
+//@version=5
+strategy("RSI2_Upper", overlay=true, pyramiding = 3, initial_capital = 10000)
+src = close, 
+start = (time >= timestamp(2021,8,1,0,0))
+end = (time <= timestamp(2022,2,1,0,0))
+
+//RSI Code
+up   = ta.rma(math.max(close - close[1], 0), 2)
+down = ta.rma(-math.min(close - close[1], 0), 2)
+rsi  = (down == 0 ? 100 : (up == 0 ? 0 : 100-100/(1+up/down)))
+atr = ta.atr(14)
+
+//MovAvg's Code
+ma50 = ta.sma(close,50)
+ma200= ta.sma(close, 200)
+
+// Configure trail stop level with input options (optional)
+longTrailPerc = input.float(title="Trail Long Loss (%)", minval=0.0, step=0.1, defval=3) * 0.01
+shortTrailPerc = input.float(title="Trail Short Loss (%)", minval=0.0, step=0.1, defval=3) * 0.01
+
+// Make inputs that set the take profit % (optional)
+longProfitPerc = input.float(title="Long Take Profit (%)", minval=0.0, step=0.1, defval=3) * 0.01
+shortProfitPerc = input.float(title="Short Take Profit (%)",minval=0.0, step=0.1, defval=3) * 0.01
+
+// Determine trail stop loss prices
+longStopPrice = 0.0, shortStopPrice = 0.0
+
+longStopPrice := if (strategy.position_size > 0)
+    stopValue = close * (1 - longTrailPerc)
+    math.max(stopValue, longStopPrice[1])
+else
+    0
+
+shortStopPrice := if (strategy.position_size < 0)
+    stopValue = close * (1 + shortTrailPerc)
+    math.min(stopValue, shortStopPrice[1])
+else
+    999999
+    
+// Figure out take profit price
+longExitPrice  = strategy.position_avg_price * (1 + longProfitPerc)
+shortExitPrice = strategy.position_avg_price * (1 - shortProfitPerc)
+
+//Rules for Bar Colors
+isLongEntry() =>  close > ma200 and rsi <= 10 and ta.crossover(ma50, ma200)
+
+isLongExit() =>   close > ma50 and  close > ma200 and rsi <= 10 
+
+isShortEntry() => close < ma200 and rsi >= 90 and ta.crossover(ma200, ma50)
+
+isShortExit() =>  close < ma50 and close < ma200  and rsi >= 90 
+
+// Submit entry orders
+strategy.entry("enter long", strategy.long , when = isLongEntry() and start and end)
+strategy.entry("enter short", strategy.short , when = isShortEntry() and start and end)
+
+// Submit exit orders for trail stop loss price
+if (strategy.position_size > 0)
+    strategy.exit(id="Trailing SL-TP", limit = longExitPrice, stop=longStopPrice, when = isLongExit() and start and end)
+
+if (strategy.position_size < 0)
+    strategy.exit(id="Trailing SL-TP", limit = shortExitPrice,  stop=shortStopPrice, when = isShortExit() and start and end )
+    
+//Rules For MA Colors
+col = ma50 >= ma200 ? color.lime : ma50 < ma200 ? color.red : na
+
+plot(series=(strategy.position_size > 0) ? longStopPrice : na, color=color.blue, style=plot.style_cross, linewidth=3, title="Long Trail Stop")
+plot(series=(strategy.position_size < 0) ? shortStopPrice : na, color=color.blue, style=plot.style_cross, linewidth=3, title="Short Trail Stop")
+
+plot(series=(strategy.position_size > 0) ? longExitPrice : na, color=color.fuchsia, style=plot.style_cross, linewidth=3, title="Long Take Profit")
+plot(series=(strategy.position_size < 0) ? shortExitPrice : na, color=color.fuchsia, style=plot.style_cross, linewidth=3, title="Short Take Profit")
+
+//plot(ma50, color=col, title="50 SMA", style=plot.style_line, linewidth=3)
+//plot(ma200, color=col, title="200 SMA", style=plot.style_circles, linewidth=3)
